@@ -123,7 +123,6 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 				</Grid>
 
 			</StackPanel>
-			<my:AdControl AdUnitId="Image480_80" ApplicationId="test_client" Grid.Row="4" Height="80" HorizontalAlignment="Left" Margin="3,444,0,0" Name="adControl1" VerticalAlignment="Top" Width="480" />
 		</Grid>
 	</ScrollViewer>
 	<!--Sample code showing usage of ApplicationBar-->
