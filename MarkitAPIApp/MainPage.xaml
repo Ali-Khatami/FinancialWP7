@@ -1,0 +1,141 @@
+﻿<!-- xmlns:ControlsToolkit="clr-namespace:System.Windows.Controls;assembly=System.Windows.Controls.Toolkit" -->
+<phone:PhoneApplicationPage 
+x:Class="MarkitAPIApp.MainPage"
+xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+FontFamily="{StaticResource PhoneFontFamilyNormal}"
+FontSize="{StaticResource PhoneFontSizeNormal}"
+Foreground="{StaticResource PhoneForegroundBrush}"
+SupportedOrientations="PortraitOrLandscape" Orientation="Portrait"
+shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.Mobile.UI;assembly=Microsoft.Advertising.Mobile.UI">
+
+	<ScrollViewer>
+		<ScrollViewer.Background>
+			<ImageBrush ImageSource="/MarkitAPIApp;component/LargeAppBG.jpg" />
+		</ScrollViewer.Background>
+			<!--LayoutRoot is the root grid where all page content is placed-->
+		<Grid x:Name="LayoutRoot">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="235*" />
+			</Grid.RowDefinitions>
+
+			<!--TitlePanel contains the name of the application and page title-->
+			<StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28">
+				<TextBlock x:Name="ApplicationTitle" Text="MARKIT ON DEMAND" Style="{StaticResource PhoneTextNormalStyle}"/>
+				<TextBlock x:Name="PageTitle" Text="Quick Quote" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
+			</StackPanel>
+        
+			<!--Search Grid - Contains the searching Area-->
+			<Grid x:Name="SearchGrid" Grid.Row="1" Margin="12,0,12,12">
+			
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition Height="Auto"/>
+				</Grid.RowDefinitions>
+
+				<!-- Row 0 : Input Row -->
+				<StackPanel Grid.Row="0" Orientation="Horizontal">
+					<TextBox Height="72" HorizontalAlignment="Left" Name="SymbolTextBox" Text="Enter Symbol..." VerticalAlignment="Top" Width="270" GotFocus="SymbolInput_Focus" LostFocus="SymbolInput_Blur" KeyDown="SymbolInput_KeyDown" KeyUp="SymbolInput_KeyUp" />
+					<Button Content="Get Quote" Height="72" HorizontalAlignment="Left" Name="GetQuoteBTN" VerticalAlignment="Top" Width="174" Click="GetQuoteBTN_Click" />
+				</StackPanel>
+
+				<!-- Row 1 : Search as you type row -->
+				<StackPanel Grid.Row="1">
+					<TextBlock HorizontalAlignment="Left" x:Name="LookupResultsBox" Text="" VerticalAlignment="Top" MaxWidth="422" Height="auto" TextWrapping="Wrap" Margin="12,0,0,0" />
+				</StackPanel>
+
+				<!-- Row 2 : Error Row -->
+				<StackPanel Grid.Row="2">
+					<TextBlock HorizontalAlignment="Left" Name="ErrorTextBlock" Text="" VerticalAlignment="Top" Foreground="White" MaxWidth="422" TextWrapping="Wrap"  Margin="12,0,0,0" />
+				</StackPanel>
+
+			</Grid>
+
+			<StackPanel x:Name="LoaderPanel" Grid.Row="2">
+				<toolkit:PerformanceProgressBar Name="ProgressBar" IsIndeterminate="True" Visibility="Collapsed" Foreground="White" />
+			</StackPanel>
+
+			<!-- Company Data Grid - Contains compay result data -->
+			<StackPanel x:Name="CompanyDataPanel" Grid.Row="3" Visibility="Collapsed">
+				
+				<StackPanel Orientation="Horizontal">
+					<TextBlock HorizontalAlignment="Left" x:Name="SymbolTextBlock" Text="GOOG" VerticalAlignment="Top" Style="{StaticResource PhoneTextTitle1Style}" Width="auto" />
+					<TextBlock HorizontalAlignment="Left" VerticalAlignment="Center" x:Name="CompanyNameTextBlock" Text="Google Inc." Style="{StaticResource PhoneTextTitle2Style}" Width="auto" TextWrapping="Wrap" />
+				</StackPanel>
+
+				<Grid x:Name="QuoteDataGrid">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+					</Grid.RowDefinitions>
+
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+				
+					<!-- Start Row 0 -->
+					<Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
+						<TextBlock HorizontalAlignment="Left" x:Name="PriceTextBlock" Style="{StaticResource PhoneTextTitle1Style}" Text="" />
+					</Grid>
+					<!-- End Row 0 -->
+
+					<!-- Start Row 1 -->
+					<Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="ChangeLabel" Text="Change" />
+					</Grid>
+					<Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="ChangeValue" Text="" />
+					</Grid>
+					<!-- End Row 1 -->
+
+					<!-- Start Row 2 -->
+					<Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="ChangePCTLabel" Text="Change %" />
+					</Grid>
+					<Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="ChangePCTValue" Text="" />
+					</Grid>
+					<!-- End Row 2 -->
+
+					<!-- Start Row 3 -->
+					<Grid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="MarketCapLabel" Text="Market Cap" />
+					</Grid>
+					<Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="1">
+						<TextBlock HorizontalAlignment="Left" x:Name="MarketCapValue" Text="" />
+					</Grid>
+					<!-- End Row 3 -->
+			
+				</Grid>
+
+			</StackPanel>
+			<my:AdControl AdUnitId="Image480_80" ApplicationId="test_client" Grid.Row="4" Height="80" HorizontalAlignment="Left" Margin="3,444,0,0" Name="adControl1" VerticalAlignment="Top" Width="480" />
+		</Grid>
+	</ScrollViewer>
+	<!--Sample code showing usage of ApplicationBar-->
+	<!--<phone:PhoneApplicationPage.ApplicationBar>
+		<shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
+			<shell:ApplicationBarIconButton IconUri="/Images/appbar_button1.png" Text="Button 1"/>
+			<shell:ApplicationBarIconButton IconUri="/Images/appbar_button2.png" Text="Button 2"/>
+			<shell:ApplicationBar.MenuItems>
+				<shell:ApplicationBarMenuItem Text="MenuItem 1"/>
+				<shell:ApplicationBarMenuItem Text="MenuItem 2"/>
+			</shell:ApplicationBar.MenuItems>
+		</shell:ApplicationBar>
+	</phone:PhoneApplicationPage.ApplicationBar>-->
+
+</phone:PhoneApplicationPage>
