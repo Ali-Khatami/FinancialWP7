@@ -100,6 +100,7 @@
     <Content Include="Background.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Resource Include="Water.png" />
     <Resource Include="Loader-White.gif" />
     <Resource Include="LargeAppBG.jpg" />
     <SplashScreen Include="SplashScreenImage.jpg" />

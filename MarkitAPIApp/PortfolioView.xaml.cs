@@ -74,7 +74,17 @@ namespace MarkitAPIApp
         {
             Button SymbolButton = new Button();
             SymbolButton.Content = Symbol;
-            SymbolButton.Margin = new Thickness(0, 15, 0, 15);            
+            SymbolButton.Margin = new Thickness(0, 15, 0, 15);
+
+            SolidColorBrush sBrush = new SolidColorBrush();
+            Color cBackgroundColor = new Color();
+            cBackgroundColor.R = 6;
+            cBackgroundColor.G = 48;
+            cBackgroundColor.B = 109;
+            cBackgroundColor.A = 1;
+            sBrush.Color = cBackgroundColor;
+
+            SymbolButton.Background = sBrush;
 
             return SymbolButton;
         }
@@ -101,7 +111,13 @@ namespace MarkitAPIApp
         {
             object Tag = ((MenuItem)sender).Tag;
 
-            MessageBox.Show(string.Format("Delete {0} from your watchlist?", Tag.ToString()), "delete", MessageBoxButton.OKCancel);
+            MessageBoxResult Result = MessageBox.Show(string.Format("Delete {0} from your watchlist?", Tag.ToString()), "delete", MessageBoxButton.OKCancel);
+            
+            if (Result != MessageBoxResult.OK)
+            {
+                return;
+            }
+
             this._RemoveFromWatchlist(Tag.ToString());
             this._PopulateWatchlist();
         }
