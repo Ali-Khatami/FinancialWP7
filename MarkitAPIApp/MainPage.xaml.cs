@@ -12,6 +12,10 @@ using System.Windows.Shapes;
 using System.Xml.Linq;
 using Microsoft.Phone.Controls;
 using System.Xml.Serialization;
+using System.Text;
+using System.IO;
+using Microsoft.Phone.Tasks;
+using System.IO.IsolatedStorage;
 
 namespace MarkitAPIApp
 {
@@ -19,24 +23,39 @@ namespace MarkitAPIApp
 	{
 		private WebClient _QuoteWebClient;
 		private WebClient _LookupWebClient;
-		private WebClient _LookupAsTypeWebClient;
+		private WebClient _NewsWebClient;
 		private string _LookupAPIURL = "http://dev.markitondemand.com/Api/Lookup/xml?input={0}";
 		private string _QuoteAPIURL = "http://dev.markitondemand.com/Api/Quote/xml?symbol={0}";
+        private string _NewsAPIURL = "http://www.google.com/finance/company_news?q={0}&output=rss";
 		private string _DefaultInputText = "Enter Symbol...";
 		private string _CurrentInputValue = "";
 		private string _CurrentSymbol = "";
-
-		// Constructor
+        private IsolatedStorageFile _WatchlistFile;
+        private string _WatchlistFileName;
+        private List<string> _WatchList = new List<string>();
+		
+        // Constructor
 		public MainPage()
 		{
-			InitializeComponent();
+            this._WatchlistFile = IsolatedStorageFile.GetUserStoreForApplication();
+            this._WatchlistFileName = "Watchlist.txt";
+
+            // If the file doesn't exist we need to create it so the user has it for us to reference.
+            if (!this._WatchlistFile.FileExists(this._WatchlistFileName))
+            {
+                this._WatchlistFile.CreateFile(this._WatchlistFileName).Close();
+            }
+
+            this._WatchList = this._ReadWatchlistFile();
+            
+            InitializeComponent();
 
 			// Init WebClient's and set callbacks
 			this._LookupWebClient = new WebClient();
 			this._LookupWebClient.OpenReadCompleted += new OpenReadCompletedEventHandler(this.LookupSymbolComplete);
 
-			this._LookupAsTypeWebClient = new WebClient();
-			this._LookupAsTypeWebClient.OpenReadCompleted += new OpenReadCompletedEventHandler(this.SymbolAutoCompleteComplete);
+            this._NewsWebClient = new WebClient();
+            this._NewsWebClient.OpenReadCompleted += new OpenReadCompletedEventHandler(this.NewsSearchComplete);
 
 			this._QuoteWebClient = new WebClient();
 			this._QuoteWebClient.OpenReadCompleted += new OpenReadCompletedEventHandler(this.GetQuoteComplete);
@@ -45,32 +64,101 @@ namespace MarkitAPIApp
 
 		}
 
-		private void GetQuoteBTN_Click(object sender, RoutedEventArgs e)
-		{
-			this.LookupSymbol();
-			SymbolTextBox.Text = _DefaultInputText;
-		}
+		#region News Search
 
-		#region Symbol Auto Complete
-
-		private void SymbolAutoComplete()
+		private void NewsSearch(string Symbol)
 		{
-			this.ErrorTextBlock.Text = "";
-			this._CurrentInputValue = "";
-			this._CurrentSymbol = "";
-			this._CurrentInputValue = SymbolTextBox.Text;
 			// Call the OpenReadAsyc to make a get request, passing the url with the selected search string.
-			this._LookupAsTypeWebClient.OpenReadAsync(new Uri(String.Format(this._LookupAPIURL, this._CurrentInputValue)));
+            this._NewsWebClient.OpenReadAsync(new Uri(String.Format(this._NewsAPIURL, Symbol)));
+            this.NewsLoaderPanel.Visibility = Visibility.Visible;
 		}
 
-		private void SymbolAutoCompleteComplete(object sender, OpenReadCompletedEventArgs e)
+        private void NewsSearchComplete(object sender, OpenReadCompletedEventArgs e)
 		{
-        
+            XElement ResultXML;
+
+            if (e.Error != null)
+            {
+                this.NewsSearchFail(true);
+            }
+            else
+            {
+                try
+                {
+                    ResultXML = XElement.Load(e.Result);
+
+                    List<NewsResult> NewsResults = new List<NewsResult>();
+
+                    if (!ResultXML.HasElements || !ResultXML.Elements().First<XElement>().HasElements)
+                    {
+                        this.NewsSearchFail(false);
+                    }
+
+                    IEnumerable<XElement> Items = ResultXML.Elements().First<XElement>().Elements("item");
+
+                    foreach (XElement ItemElement in Items)
+                    {
+                        if (ItemElement == null || !ItemElement.HasElements)
+                        {
+                            continue;
+                        }
+
+                        DateTime Date = DateTime.MinValue;
+
+                        DateTime.TryParse(_GetXElementValue(ItemElement.Element("pubDate")), out Date);
+
+                        NewsResult Result = new NewsResult
+                        {
+                            // Get the Title, Description and Url values.
+                            Title = _GetXElementValue(ItemElement.Element("title")),
+                            Link = _GetXElementValue(ItemElement.Element("link")),
+                            PublishedDate = Date
+                        };
+
+                        NewsResults.Add(Result);
+                    }
+
+                    if (NewsResults.Count > 0)
+                    {
+                        foreach (NewsResult Item in NewsResults)
+                        {
+                            TextBlock TitleTextBlock = new TextBlock();
+                            TitleTextBlock.Style = (Style)(this.Resources["PhoneTextTitle2Style"]);
+                            TitleTextBlock.Text = Item.Title;
+                            TitleTextBlock.Tag = Item.Link;
+                            TitleTextBlock.TextWrapping = TextWrapping.Wrap;
+                            TitleTextBlock.Margin = new Thickness(0,15,0,15);                            
+                            TitleTextBlock.Tap += new EventHandler<System.Windows.Input.GestureEventArgs>(this._OpenLinkInBrowser);
+                            
+                            TextBlock DateTextBlock = new TextBlock();
+                            DateTextBlock.Style = (Style)(this.Resources["PhoneTextTitle3Style"]);
+                            DateTextBlock.Text = "Published " + ((Item.PublishedDate != DateTime.MinValue) ? Item.PublishedDate.ToShortDateString() : "--");
+                            DateTextBlock.Margin = new Thickness(0);
+
+                            this.CompanyNewsPanel.Children.Add(TitleTextBlock);
+                            this.CompanyNewsPanel.Children.Add(DateTextBlock);
+                        }
+
+                        this.NewsLoaderPanel.Visibility = Visibility.Collapsed;
+                        this.CompanyNewsPanel.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        this.NewsSearchFail(false);
+                    }
+                }
+                catch
+                {
+                    this.NewsSearchFail(true);
+                }
+            }
 		}
 
-		private void SymbolAutoCompleteFail(bool IsRealFailure)
+        private void NewsSearchFail(bool IsRealFailure)
 		{
-        
+            this.NewsLoaderPanel.Visibility = Visibility.Collapsed;
+            this.CompanyNewsPanel.Visibility = Visibility.Visible;
+            this.CompanyNewsErrorTextBlock.Text = string.Format("Failed to retrieve news articles for {0}.", this._CurrentSymbol);
 		}
 
 		#endregion
@@ -79,12 +167,7 @@ namespace MarkitAPIApp
 
 		private void LookupSymbol()
 		{
-			this.CompanyDataPanel.Visibility = Visibility.Collapsed;
-			this.ProgressBar.Visibility = Visibility.Visible;
-			this.ErrorTextBlock.Text = "";
-			this._CurrentInputValue = "";
-			this._CurrentSymbol = "";
-			this._CurrentInputValue = SymbolTextBox.Text;
+            this._ResetUI();
 			// Call the OpenReadAsyc to make a get request, passing the url with the selected search string.
 			this._LookupWebClient.OpenReadAsync(new Uri(String.Format(this._LookupAPIURL, this._CurrentInputValue)));
 		}
@@ -106,9 +189,9 @@ namespace MarkitAPIApp
 				select new MODLookupResult
 				{
 					// Get the Title, Description and Url values.
-					Symbol = result.Element("Symbol").Value,
-					Name = result.Element("Name").Value,
-					Exchange = result.Element("Exchange").Value
+                    Symbol = _GetXElementValue(result.Element("Symbol")),
+                    Name = _GetXElementValue(result.Element("Name")),
+					Exchange = _GetXElementValue(result.Element("Exchange"))
 				};
 
 				List<MODLookupResult> Lookups = new List<MODLookupResult>();
@@ -121,8 +204,11 @@ namespace MarkitAPIApp
 				if (Lookups.Count > 0)
 				{
 					this.GetQuote(Lookups[0].Symbol);
-					SymbolTextBlock.Text = Lookups[0].Symbol;
-					CompanyNameTextBlock.Text = Lookups[0].Name;
+                    this.NewsSearch(Lookups[0].Symbol);
+					this.SymbolTextBlock.Text = Lookups[0].Symbol;
+                    this.AddCompanyLink.Text = string.Format("Add {0} to your watchlist.", Lookups[0].Symbol);
+                    this.AddCompanyLink.Tag = Lookups[0].Symbol;
+					this.CompanyNameTextBlock.Text = Lookups[0].Name;
 				}
 				else
 				{
@@ -138,10 +224,13 @@ namespace MarkitAPIApp
 
 		private void LookupSymbolFail(bool IsRealFailure)
 		{
-			this.ProgressBar.Visibility = Visibility.Collapsed;
+			this.QuoteLoaderPanel.Visibility = Visibility.Collapsed;
+            this.NewsLoaderPanel.Visibility = Visibility.Collapsed;
 			this.SymbolTextBlock.Text = "";
+            this.AddCompanyLink.Text = "";
+            this.AddCompanyLink.Tag = null;
 			this.CompanyNameTextBlock.Text = "";
-			this.PriceTextBlock.Text = "";
+			this.PriceValue.Text = "";
 			this.ErrorTextBlock.Text = (IsRealFailure) ? "Symbol lookup failed." : string.Format("No matches for {0}. Please check your input and try again.", this._CurrentInputValue);
 		}
 
@@ -208,7 +297,7 @@ namespace MarkitAPIApp
 				if (QuoteResults.Count > 0)
 				{
 					MODQuoteResult CurrResult = QuoteResults[0];
-					PriceTextBlock.Text = "$" + String.Format("{0:0,0.00}", CurrResult.LastPrice);
+					PriceValue.Text = "$" + String.Format("{0:0,0.00}", CurrResult.LastPrice);
 					ChangeValue.Text = "$" + String.Format("{0:0,0.00}", CurrResult.Change);
 					ChangePCTValue.Text = String.Format("{0:0,0.00}", CurrResult.ChangePercent) + "%";
 					MarketCapValue.Text = String.Format("{0:#,,,}", CurrResult.MarketCap);
@@ -227,7 +316,7 @@ namespace MarkitAPIApp
 					}
 
 					this.CompanyDataPanel.Visibility = Visibility.Visible;
-					this.ProgressBar.Visibility = Visibility.Collapsed;
+                    this.QuoteLoaderPanel.Visibility = Visibility.Collapsed;                    
 				}
 				else
 				{
@@ -243,10 +332,12 @@ namespace MarkitAPIApp
 
 		private void GetQuoteFail(bool IsRealFailure)
 		{
-			this.ProgressBar.Visibility = Visibility.Collapsed;
+			this.QuoteLoaderPanel.Visibility = Visibility.Collapsed;
 			this.SymbolTextBlock.Text = "";
+            this.AddCompanyLink.Text = "";
+            this.AddCompanyLink.Tag = null;
 			this.CompanyNameTextBlock.Text = "";
-			this.PriceTextBlock.Text = "";
+			this.PriceValue.Text = "";
 			this.ErrorTextBlock.Text = string.Format("Failed to retrieve quote for {0}.", this._CurrentSymbol);
 		}
 
@@ -275,8 +366,8 @@ namespace MarkitAPIApp
 			if (e.Key == Key.Enter)
 			{
 				this.LookupSymbol();
-				SymbolTextBox.Text = _DefaultInputText;
-				this.Focus(); // hide the keyboard
+				SymbolTextBox.Text = _DefaultInputText;                
+				this.Focus(); // focus on the application to hide the keyboard
 			}
 		}
 
@@ -288,7 +379,164 @@ namespace MarkitAPIApp
 
 		#endregion
 
-	}
+        #region Helpers
+
+        private string _GetXElementValue(XElement Element)
+        {
+            if (Element != null)
+            {
+                return Element.Value;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        private void _OpenLinkInBrowser(object Obj, System.Windows.Input.GestureEventArgs E)
+        {
+            WebBrowserTask wbTask = new WebBrowserTask();
+            wbTask.Uri = new Uri(((TextBlock)Obj).Tag.ToString());
+            wbTask.Show();
+        }
+
+        private void _ResetUI()
+        {
+            this.CompanyDataPanel.Visibility = Visibility.Collapsed;
+            this.CompanyNewsPanel.Visibility = Visibility.Collapsed;
+            this.QuoteLoaderPanel.Visibility = Visibility.Visible;
+            this.NewsLoaderPanel.Visibility = Visibility.Collapsed;
+            this.ErrorTextBlock.Text = "";
+            this._CurrentInputValue = "";
+            this._CurrentSymbol = "";
+            this._CurrentInputValue = SymbolTextBox.Text;
+        }
+
+        private bool _UpdateWatchlist()
+        {
+            try
+            {
+                // Completely wipe the File and open in.
+                StreamWriter StreamWriter = new StreamWriter(new IsolatedStorageFileStream(this._WatchlistFileName, FileMode.Truncate, this._WatchlistFile));
+
+                List<string> DistinctWatchlist = this._WatchList.Distinct().ToList();
+
+                // loop through all the symbols currently in the watchlist and write each one to the file.
+                foreach (string Symbol in DistinctWatchlist)
+                {
+                    StreamWriter.WriteLine(Symbol); //Wrting to the file
+                }
+
+                // close the stream writer.
+                StreamWriter.Close();
+
+                // everything went according to plan so return true.
+                return true;
+            }
+            catch
+            {
+                // something went wrong return false.
+                return false;
+            }
+        }
+
+        private bool _ClearWatchlist()
+        {
+            try
+            {
+                // Completely wipe the File and open in.
+                StreamWriter StreamWriter = new StreamWriter(new IsolatedStorageFileStream(this._WatchlistFileName, FileMode.Truncate, this._WatchlistFile));
+
+                this._WatchList = new List<string>();
+
+                return this._UpdateWatchlist();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool _AddToWatchlist(params string[] Symbols)
+        {
+            try
+            {
+                this._WatchList.AddRange(Symbols);
+                return this._UpdateWatchlist();
+            }
+            catch
+            { 
+                // something went wrong, return false.
+                return false;
+            }
+        }
+
+        private bool _RemoveFromWatchlist(params string[] Symbols)
+        {
+            try
+            {
+                List<string> WatchlistCopy = this._WatchList.Distinct().ToList();
+
+                foreach (string Symbol in Symbols)
+                {
+                    if (WatchlistCopy.Contains(Symbol))
+                    {
+                        WatchlistCopy.Remove(Symbol);
+                    }
+                }
+
+                this._WatchList = WatchlistCopy;
+
+                return this._UpdateWatchlist();
+            }
+            catch
+            {
+                // something went wrong, return false.
+                return false;
+            }
+        }
+
+        private List<string> _ReadWatchlistFile()
+        {
+            // Clear the watchlist everytime.
+            this._WatchList = new List<string>();
+            
+            // Create a stream
+            StreamReader reader = new StreamReader(new IsolatedStorageFileStream(this._WatchlistFileName, FileMode.Open, this._WatchlistFile));
+            
+            // read the data all the way through
+            string sRawData = reader.ReadToEnd();
+            
+            // close the stream
+            reader.Close();
+            
+            // split the data into an array that we can iterate over
+            string[] arData = sRawData.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // loop through and populate the watchlist.
+            foreach (string Symbol in arData)
+            {
+                this._WatchList.Add(Symbol);
+            }
+
+            return this._WatchList;
+        }
+
+        #endregion
+
+        private void AddCompanyLink_Tap(object sender, System.Windows.Input.GestureEventArgs e)
+        {
+            object Tag = ((TextBlock)sender).Tag;
+
+            if (Tag != null)
+            {
+                // add the symbol to the watch list.
+                this._AddToWatchlist(Tag.ToString());
+                // go to the portfolio page.
+                this.NavigationService.Navigate(new Uri("/PortfolioView.xaml", UriKind.Relative));
+            }
+        }
+    }
 
 	public class MODLookupResult
 	{
@@ -314,4 +562,11 @@ namespace MarkitAPIApp
 		public double Low { get; set; }
 		public double Open { get; set; }
 	}
+
+    public class NewsResult
+    {
+        public string Title { get; set; }
+        public string Link { get; set; }
+        public DateTime PublishedDate { get; set; }
+    }
 }

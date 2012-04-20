@@ -1,5 +1,4 @@
-﻿<!-- xmlns:ControlsToolkit="clr-namespace:System.Windows.Controls;assembly=System.Windows.Controls.Toolkit" -->
-<phone:PhoneApplicationPage 
+﻿<phone:PhoneApplicationPage 
 x:Class="MarkitAPIApp.MainPage"
 xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -26,17 +25,18 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 				<RowDefinition Height="Auto"/>
 				<RowDefinition Height="Auto"/>
 				<RowDefinition Height="Auto"/>
-				<RowDefinition Height="235*" />
-			</Grid.RowDefinitions>
+				<RowDefinition Height="Auto" />
+                <RowDefinition Height="403*" />
+            </Grid.RowDefinitions>
 
 			<!--TitlePanel contains the name of the application and page title-->
-			<StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28">
+			<StackPanel x:Name="TitlePanel" Grid.Row="0">
 				<TextBlock x:Name="ApplicationTitle" Text="MARKIT ON DEMAND" Style="{StaticResource PhoneTextNormalStyle}"/>
-				<TextBlock x:Name="PageTitle" Text="Quick Quote" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
-			</StackPanel>
+				<TextBlock x:Name="PageTitle" Text="Quick Look" Style="{StaticResource PhoneTextTitle1Style}"/>
+            </StackPanel>
         
 			<!--Search Grid - Contains the searching Area-->
-			<Grid x:Name="SearchGrid" Grid.Row="1" Margin="12,0,12,12">
+			<Grid x:Name="SearchGrid" Grid.Row="1">
 			
 				<Grid.RowDefinitions>
 					<RowDefinition Height="Auto"/>
@@ -46,9 +46,8 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 
 				<!-- Row 0 : Input Row -->
 				<StackPanel Grid.Row="0" Orientation="Horizontal">
-					<TextBox Height="72" HorizontalAlignment="Left" Name="SymbolTextBox" Text="Enter Symbol..." VerticalAlignment="Top" Width="270" GotFocus="SymbolInput_Focus" LostFocus="SymbolInput_Blur" KeyDown="SymbolInput_KeyDown" KeyUp="SymbolInput_KeyUp" />
-					<Button Content="Get Quote" Height="72" HorizontalAlignment="Left" Name="GetQuoteBTN" VerticalAlignment="Top" Width="174" Click="GetQuoteBTN_Click" />
-				</StackPanel>
+					<TextBox Height="72" HorizontalAlignment="Left" Name="SymbolTextBox" Text="Enter Symbol..." VerticalAlignment="Top" Width="482" GotFocus="SymbolInput_Focus" LostFocus="SymbolInput_Blur" KeyDown="SymbolInput_KeyDown" KeyUp="SymbolInput_KeyUp" />
+                </StackPanel>
 
 				<!-- Row 1 : Search as you type row -->
 				<StackPanel Grid.Row="1">
@@ -62,16 +61,20 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 
 			</Grid>
 
-			<StackPanel x:Name="LoaderPanel" Grid.Row="2">
-				<toolkit:PerformanceProgressBar Name="ProgressBar" IsIndeterminate="True" Visibility="Collapsed" Foreground="White" />
+            <StackPanel x:Name="QuoteLoaderPanel" Visibility="Collapsed" Grid.Row="2">
+				<toolkit:PerformanceProgressBar IsIndeterminate="True" Foreground="White" />
 			</StackPanel>
 
 			<!-- Company Data Grid - Contains compay result data -->
-			<StackPanel x:Name="CompanyDataPanel" Grid.Row="3" Visibility="Collapsed">
-				
-				<StackPanel Orientation="Horizontal">
-					<TextBlock HorizontalAlignment="Left" x:Name="SymbolTextBlock" Text="GOOG" VerticalAlignment="Top" Style="{StaticResource PhoneTextTitle1Style}" Width="auto" />
-					<TextBlock HorizontalAlignment="Left" VerticalAlignment="Center" x:Name="CompanyNameTextBlock" Text="Google Inc." Style="{StaticResource PhoneTextTitle2Style}" Width="auto" TextWrapping="Wrap" />
+			<StackPanel x:Name="CompanyDataPanel" Grid.Row="3" Visibility="Collapsed" Margin="12,0">
+                
+                <TextBlock x:Name="AddCompanyLink" Text="" Margin="0" TextWrapping="Wrap" Tap="AddCompanyLink_Tap" />
+                
+                <TextBlock x:Name="QuickQuoteTitle" Text="QUICK QUOTE" Style="{StaticResource PhoneTextLargeStyle}" Margin="0,30,0,30" />
+                
+                <StackPanel Orientation="Vertical">                    
+                    <TextBlock x:Name="CompanyNameTextBlock" Text="" Style="{StaticResource PhoneTextTitle2Style}" Margin="0" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SymbolTextBlock" Text="" Style="{StaticResource PhoneTextTitle1Style}" Margin="0" />
 				</StackPanel>
 
 				<Grid x:Name="QuoteDataGrid">
@@ -88,10 +91,13 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 					</Grid.ColumnDefinitions>
 				
 					<!-- Start Row 0 -->
-					<Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
-						<TextBlock HorizontalAlignment="Left" x:Name="PriceTextBlock" Style="{StaticResource PhoneTextTitle1Style}" Text="" />
-					</Grid>
-					<!-- End Row 0 -->
+				    <Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1">
+                        <TextBlock HorizontalAlignment="Left" x:Name="PriceLabel" Text="Last Price" />
+                    </Grid>
+                    <Grid Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="1">
+                        <TextBlock HorizontalAlignment="Left" x:Name="PriceValue" Text="" />
+                    </Grid>
+                    <!-- End Row 0 -->
 
 					<!-- Start Row 1 -->
 					<Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="1">
@@ -123,8 +129,19 @@ shell:SystemTray.IsVisible="True" xmlns:my="clr-namespace:Microsoft.Advertising.
 				</Grid>
 
 			</StackPanel>
-		</Grid>
+
+            <StackPanel x:Name="NewsLoaderPanel" Visibility="Collapsed" Grid.Row="4">
+                <toolkit:PerformanceProgressBar IsIndeterminate="True" Foreground="White" />
+            </StackPanel>
+
+            <!-- Company News Grid - Contains news feed -->
+            <StackPanel x:Name="CompanyNewsPanel" Grid.Row="5" Visibility="Collapsed" Orientation="Vertical" Margin="12,10,0,10">
+                <TextBlock x:Name="NewsTitle" Text="NEWS" Style="{StaticResource PhoneTextLargeStyle}" Margin="0,30,0,30" />
+                <TextBlock x:Name="CompanyNewsErrorTextBlock" Text="" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
 	</ScrollViewer>
+    
 	<!--Sample code showing usage of ApplicationBar-->
 	<!--<phone:PhoneApplicationPage.ApplicationBar>
 		<shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
